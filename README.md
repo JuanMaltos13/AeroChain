@@ -1,101 +1,242 @@
 # AeroChain
-Aplicación descentralizada de reservación de vuelo construida en Solana usando Rust, Anchor y React
 
-<img width="1080" height="1080" alt="FB_IMG_1709686996003" src="https://github.com/user-attachments/assets/4ee0f914-c5d8-453e-87c1-c45741623e1e" />
+**Decentralized Flight Reservation Application on Solana**
 
-Bienvenidos a AeroChain una aplicación funcional de reservación de vuelos sobre Solana, utilizando Rust, Anchor, PDAs, TypeScript y una interfaz web conectada a una wallet.
-Mi propuesta es construirlo con un enfoque de ingeniería de software: que no sea solamente una demostración visual, sino un proyecto que puedas ejecutar, explicar, probar y defender durante la evaluación.
+AeroChain es una aplicación descentralizada de reservación de vuelos construida sobre **Solana**, utilizando **Rust, Anchor y TypeScript**. Permite conectar una wallet, consultar vuelos disponibles, crear vuelos y reservar asientos mediante transacciones registradas en la blockchain.
 
-**1. Arquitectura propuesta**
-Componente	      | Tecnología	  | Responsabilidad
-------------------|---------------|--------------------------------------
-Programa on-chain	| Rust + Anchor	| Reglas de negocio y operaciones
-Blockchain	      | Solana Devnet	| Almacenamiento y transacciones
-Cuentas	          | PDAs	        | Administración de vuelos y pasajeros
-IDL	              | Anchor IDL	  | Contrato entre programa y cliente
-Cliente	          | TypeScript	  | Comunicación con Solana
-Frontend	        | React + Vite	| Reservaciones y administración
-Wallet	          | Solana Wallet | Adapter	Conexión y firma de transacciones
+El proyecto integra un programa on-chain desarrollado con Anchor y una interfaz web que permite interactuar con dicho programa desde una wallet compatible con Solana.
 
-  **Modelo de cuentas**
-<img width="1100" height="477" alt="image" src="https://github.com/user-attachments/assets/3a4aaa97-51ab-4b07-b49c-7243f049372a" />
+<img width="1080" height="1080" alt="AeroChain" src="https://github.com/user-attachments/assets/4ee0f914-c5d8-453e-87c1-c45741623e1e" />
 
-  La regla principal será un máximo de nueve pasajeros por vuelo, validado directamente en Rust y no solamente en el frontend.
+---
 
-  **2. Funcionalidades y operaciones**
-  El sistema tendrá dos perfiles principales:
-- Administrador de vuelos: crea vuelos, modifica información, consulta pasajeros y cancela vuelos.
-- Pasajero: consulta vuelos, reserva un asiento, consulta su reservación y cancela su propia reservación.
+## 1. Arquitectura del proyecto
 
-Las operaciones propuestas serán:
-Operación	           | Instrucción Anchor  | Regla
----------------------|---------------------|------------------------------
-Crear vuelo	         | create_flight       | Solo administrador autorizado
-Consultar vuelo	     | getAccountInfo      | Lectura de la PDA
-Modificar vuelo	     | update_flight	     | Solo autoridad del vuelo
-Reservar asiento     | book_passenger	     | Máximo 9 pasajeros
-Consultar pasajero	 | getAccountInfo	     | Verificar PDA y propietario
-Modificar pasajero	 | update_passenger	   | Solo propietario
-Cancelar reservación | cancel_booking	     | Solo propietario
-Cancelar vuelo	     | cancel_flight	     | Autoridad y condiciones de cierre
+AeroChain utiliza una arquitectura cliente-blockchain. Las reglas de negocio y las operaciones principales se ejecutan mediante un programa desplegado en Solana Devnet.
 
-**3. Aporte funcional propio**
-Propongo que la mejora identificable sea un sistema de asignación y control de asientos con capacidad máxima de nueve pasajeros.
-No será simplemente un contador visual.
+| Componente | Tecnología | Responsabilidad |
+|---|---|---|
+| Programa on-chain | Rust + Anchor | Lógica de vuelos y reservaciones |
+| Blockchain | Solana Devnet | Registro de cuentas y transacciones |
+| Cuentas | Program Derived Addresses (PDAs) | Almacenamiento de información on-chain |
+| IDL | Anchor IDL | Interfaz entre el programa y el cliente |
+| Cliente | TypeScript + Anchor | Comunicación con el programa |
+| Frontend | TypeScript + Vite | Interfaz de usuario |
+| Wallet | Phantom | Conexión y firma de transacciones |
 
-La lógica estará implementada en Rust:
-1. Cada reservación obtiene un asiento del 1 al 9.
-2. El programa comprueba que el vuelo esté activo.
-3. Rechaza una décima reservación.
-4. Impide asignar dos veces el mismo asiento.
-5. Al cancelar una reservación, libera el asiento.
-6. El asiento liberado puede volver a reservarse.
+### Flujo general de interacción
 
-El caso de prueba más importante será intentar reservar un décimo pasajero y demostrar que la transacción es rechazada por el programa, incluso si alguien intenta evitar las validaciones del frontend.
-También incorporaremos una condición de baja: un vuelo no podrá cerrarse mientras conserve pasajeros activos. Primero deberán cancelarse sus reservaciones.
+1. El usuario abre AeroChain desde el navegador.
+2. Conecta su wallet Phantom.
+3. La aplicación establece comunicación con Solana Devnet.
+4. El cliente utiliza el IDL para interactuar con el programa Anchor.
+5. El usuario puede consultar vuelos, crear vuelos o reservar asientos.
+6. Las operaciones que modifican el estado de la blockchain requieren una transacción firmada por la wallet.
+7. La interfaz actualiza la información de vuelos y reservaciones.
 
-**4. Relación con las pruebas y evidencias**
-Caso de evaluación	|    Prueba en AeroChain	              |    Evidencia
---------------------|---------------------------------------|---------------------------
-Creación	          | Crear vuelo	                          | Firma y transacción
-Lectura	            | Consultar vuelo y pasajeros	          | Datos de las cuentas
-Modificación	      | Cambiar horario o destino	            | Estado anterior y nuevo
-Autoridad	          | Usuario no autorizado                 | intenta modificar	Transacción rechazada
-Pertenencia	        | Intentar modificar pasajero ajeno	    | Transacción rechazada
-Capacidad	          | Reservar nueve pasajeros	            | Nueve cuentas asociadas
-Validación	        | Intentar reservar el décimo	          | Error de capacidad
-Baja	              | Cancelar reservación	                | Cuenta cerrada y asiento liberado
-Cierre condicionado	| Cancelar vuelo con pasajeros activos	| Rechazo; después, cierre permitido
+---
 
-Esta matriz permitirá relacionar directamente las pruebas con los requisitos de evaluación, sin depender de los nombres de las operaciones originales del curso.
+## 2. Funcionalidades implementadas
 
-**6. Reglas técnicas importantes** 
-Las cuentas tendrán estas relaciones:
-- Flight PDA: semillas ["flight", flight_id].
-- Passenger PDA: semillas ["passenger", flight, passenger_wallet].
-Cada pasajero estará vinculado criptográficamente a su vuelo y a su wallet. El programa verificará estas relaciones mediante las restricciones de Anchor.
+### Conexión de wallet
 
-También tendremos:
-- has_one para validar autoridades y propietarios.
-- close para recuperar el rent al cancelar una cuenta.
-- Validaciones de estado para impedir reservas en vuelos cancelados.
-- Confirmación de transacciones y actualización de la interfaz después de su ejecución.
+- Conexión con Phantom.
+- Identificación de la dirección pública de la wallet.
+- Uso de la wallet conectada para firmar transacciones.
+- Consulta de información asociada al usuario.
 
+### Administración de vuelos
 
-**7. Plan de implementación y entrega**
-Programa Rust / Anchor
-Cuentas, PDAs, instrucciones, permisos, errores y pruebas unitarias.
+- Creación de vuelos directamente en Solana Devnet.
+- Registro de información del vuelo mediante cuentas on-chain.
+- Consulta de vuelos disponibles.
+- Visualización de información como número de vuelo, origen y destino.
 
-IDL y cliente TypeScript
-Generación del IDL y cliente compatible con la versión compilada del programa.
+### Reservación de asientos
 
-Frontend React
-Wallet Adapter, catálogo de vuelos, formulario de pasajeros y administración de reservaciones.
+- Selección de un vuelo disponible.
+- Captura del nombre del pasajero.
+- Selección de un asiento.
+- Creación de una reservación mediante una transacción on-chain.
+- Asociación de la reservación con el vuelo y la wallet correspondiente.
+- Consulta de las reservaciones realizadas por la wallet conectada.
 
-Devnet
-Despliegue, creación de vuelos y ejecución de transacciones reales firmadas.
+### Control de ocupación
 
-Evidencias y documentación
-README, matriz de pruebas, enlaces a Solscan, capturas y guion para la demo de 60–90 segundos.
+La aplicación consulta el estado de los asientos registrados en la blockchain.
 
-  
+- Los asientos ocupados se identifican en la interfaz.
+- No se permite seleccionar un asiento que ya se encuentra ocupado.
+- Las diferentes wallets consultan el mismo estado global de ocupación del vuelo.
+
+### Actualización automática
+
+AeroChain incorpora un mecanismo de actualización automática de vuelos cada **15 segundos**.
+
+Esta funcionalidad permite que diferentes usuarios visualicen los cambios en la ocupación de los asientos sin necesidad de recargar manualmente la página.
+
+Además, la aplicación evita actualizar los formularios mientras el usuario está interactuando con ellos, preservando la información que está escribiendo.
+
+---
+
+## 3. Programa desplegado en Solana Devnet
+
+El programa de AeroChain se encuentra desplegado en Solana Devnet.
+
+**Program ID:**
+
+```text
+E3Ai1odomZQjyXAbvy1bRpXuvXATELeYKZ7HVsShvg2C
+```
+
+**Network:** Solana Devnet
+
+Las operaciones de creación de vuelos y reservación de asientos generan transacciones reales en la red de pruebas de Solana.
+
+Esto permite verificar las operaciones directamente en la blockchain y comprobar que la aplicación no depende exclusivamente de información almacenada en el navegador.
+
+---
+
+## 4. Modelo de funcionamiento de las reservaciones
+
+El funcionamiento de AeroChain distingue dos tipos de información:
+
+**Vuelos disponibles**
+
+Los vuelos creados en la blockchain pueden ser consultados por diferentes usuarios, independientemente de la wallet que tengan conectada.
+
+**Mis reservaciones**
+
+La sección de reservaciones consulta las cuentas asociadas a la wallet actualmente conectada.
+
+Por lo tanto, cada usuario puede consultar sus propias reservaciones, mientras que la ocupación de los asientos es compartida entre todos los usuarios.
+
+Este comportamiento permite que dos usuarios conectados con wallets diferentes observen el mismo estado de un vuelo, aunque cada uno tenga un historial de reservaciones independiente.
+
+---
+
+## 5. Pruebas funcionales realizadas
+
+Durante el desarrollo se realizaron pruebas de integración entre el programa Anchor, el cliente TypeScript, Phantom y Solana Devnet.
+
+| Prueba | Resultado |
+|---|---|
+| Conexión con Phantom | Verificada |
+| Identificación de wallet | Verificada |
+| Consulta de vuelos | Verificada |
+| Creación de vuelo on-chain | Verificada |
+| Firma de transacciones | Verificada |
+| Reservación de asiento | Verificada |
+| Registro de reservación en Devnet | Verificado |
+| Consulta de Mis Reservaciones | Verificada |
+| Visualización de asientos ocupados | Verificada |
+| Actualización entre wallets diferentes | Verificada |
+| Protección de formularios durante actualización automática | Verificada |
+| Compilación del frontend | Correcta |
+| TypeScript typecheck | Correcto |
+
+### Prueba de actualización entre usuarios
+
+Se conectaron dos wallets Phantom diferentes desde sesiones independientes del navegador.
+
+El procedimiento permitió comprobar que:
+
+1. La primera wallet creó un vuelo.
+2. La segunda wallet pudo consultar ese vuelo.
+3. La segunda wallet no mostró reservaciones pertenecientes a la primera.
+4. La primera wallet realizó una reservación.
+5. La segunda wallet visualizó el asiento ocupado después de la actualización automática, sin recargar la página ni utilizar manualmente el botón de actualización.
+
+Esta prueba confirmó que el estado de ocupación se comparte a través de Solana Devnet y no depende de la sesión local del navegador.
+
+---
+
+## 6. Tecnologías y herramientas
+
+- **Rust:** desarrollo de la lógica del programa on-chain.
+- **Anchor Framework:** estructura, cuentas e instrucciones del programa Solana.
+- **Solana:** infraestructura blockchain.
+- **Solana Devnet:** red de pruebas y despliegue.
+- **TypeScript:** lógica del cliente y frontend.
+- **Vite:** servidor de desarrollo y compilación del frontend.
+- **Phantom Wallet:** conexión y firma de transacciones.
+- **IDL:** definición de la interfaz del programa Anchor.
+- **Git y GitHub:** control de versiones y administración del código fuente.
+- **GitHub Codespaces:** entorno de desarrollo.
+
+---
+
+## 7. Ejecución y desarrollo
+
+### Requisitos
+
+Para trabajar con el proyecto se requiere:
+
+- Rust y Cargo.
+- Solana CLI.
+- Anchor Framework.
+- Node.js.
+- Yarn.
+- Una wallet Phantom configurada para Solana Devnet.
+
+### Obtener el proyecto
+
+```bash
+git clone https://github.com/JuanFMaltos13/AeroChain.git
+cd AeroChain
+```
+
+### Instalar dependencias
+
+```bash
+yarn install
+```
+
+### Compilar el programa Anchor
+
+```bash
+anchor build
+```
+
+### Validar el frontend
+
+```bash
+yarn typecheck:app
+yarn build
+```
+
+### Ejecutar el entorno de desarrollo
+
+```bash
+yarn dev
+```
+
+El frontend utiliza el puerto 5173 durante el desarrollo.
+
+**Importante:** Para ejecutar transacciones en Devnet, Phantom debe estar configurada para utilizar la misma red y disponer de SOL de prueba para cubrir las comisiones.
+
+---
+
+## 8. Estado actual y trabajo futuro
+
+AeroChain cuenta con un flujo funcional de creación de vuelos, conexión de wallet, reservación de asientos y consulta de ocupación compartida entre usuarios.
+
+Las siguientes mejoras pueden ampliar el alcance del proyecto:
+
+- Mejorar la presentación de los estados de las transacciones.
+- Mostrar información más detallada de cada reservación.
+- Incorporar mecanismos de cancelación de reservaciones.
+- Implementar modificaciones y administración de vuelos.
+- Ampliar las pruebas de capacidad y concurrencia.
+- Mejorar la experiencia de usuario y el diseño responsive.
+- Incorporar documentación adicional de las cuentas, instrucciones y PDAs.
+
+---
+
+## 9. Objetivo del proyecto
+
+AeroChain demuestra la integración de desarrollo de software y tecnología blockchain mediante una aplicación descentralizada que permite ejecutar operaciones reales sobre Solana.
+
+El objetivo es construir una solución funcional, verificable y extensible, aplicando conceptos de programación en Rust, desarrollo de smart contracts, integración con wallets, arquitectura cliente-blockchain y control de versiones.
+
+**Repository:** [github.com/JuanFMaltos13/AeroChain](https://github.com/JuanFMaltos13/AeroChain)
